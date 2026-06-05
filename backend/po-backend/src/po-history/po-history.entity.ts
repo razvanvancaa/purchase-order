@@ -6,7 +6,18 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from '../users/user.entity';
-import { PurchaseOrder } from '../purchase-orders/purchase-order.entity';
+import {
+  PurchaseOrder,
+  POStatus,
+} from '../purchase-orders/purchase-order.entity';
+
+export enum POAction {
+  SUBMITTED = 'SUBMITTED',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  REWORKED = 'REWORKED',
+  INVOICED = 'INVOICED',
+}
 
 @Entity('po_history')
 export class POHistory {
@@ -16,11 +27,17 @@ export class POHistory {
   @ManyToOne(() => PurchaseOrder)
   purchaseOrder!: PurchaseOrder;
 
-  @Column()
-  action!: string;
+  @Column({ type: 'enum', enum: POAction })
+  action!: POAction;
+
+  @Column({ type: 'enum', enum: POStatus })
+  fromStatus!: POStatus;
+
+  @Column({ type: 'enum', enum: POStatus })
+  toStatus!: POStatus;
 
   @Column({ nullable: true })
-  comment!: string;
+  comment?: string;
 
   @ManyToOne(() => User)
   performedBy!: User;

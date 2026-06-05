@@ -15,7 +15,6 @@ export enum POCategory {
 }
 
 export enum POStatus {
-  DRAFT = 'DRAFT',
   PENDING_MANAGER = 'PENDING_MANAGER',
   PENDING_IT = 'PENDING_IT',
   PENDING_FINANCE = 'PENDING_FINANCE',
@@ -32,7 +31,7 @@ export class PurchaseOrder {
   title!: string;
 
   @Column({ nullable: true })
-  description!: string;
+  description?: string;
 
   @Column('decimal', { precision: 10, scale: 2 })
   amount!: number;
@@ -40,7 +39,7 @@ export class PurchaseOrder {
   @Column({ type: 'enum', enum: POCategory })
   category!: POCategory;
 
-  @Column({ type: 'enum', enum: POStatus, default: POStatus.DRAFT })
+  @Column({ type: 'enum', enum: POStatus, default: POStatus.PENDING_MANAGER })
   status!: POStatus;
 
   @ManyToOne(() => User)
