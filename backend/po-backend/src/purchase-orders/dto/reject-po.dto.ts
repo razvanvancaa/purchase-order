@@ -1,6 +1,8 @@
-import { IsOptional, IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString } from 'class-validator';
 
 export class RejectPoDto {
-    @IsString()
-    comment!: string;
+  @ApiProperty({ example: 'Amount exceeds budget' })
+  @IsString()
+  comment!: string;
 }

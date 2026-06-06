@@ -1,19 +1,24 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString } from "class-validator";
-import { POCategory } from "../purchase-order.entity";
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
+import { POCategory } from '../purchase-order.entity';
 
 export class CreatePoDto {
-    @IsString()
-    @IsNotEmpty()
-    title!: string;
+  @ApiProperty({ example: 'Office chairs' })
+  @IsString()
+  @IsNotEmpty()
+  title!: string;
 
-    @IsString()
-    @IsOptional()
-    description?: string;
+  @ApiPropertyOptional({ example: '10 ergonomic chairs for the dev team' })
+  @IsString()
+  @IsOptional()
+  description?: string;
 
-    @IsNumber()
-    @IsPositive()
-    amount!: number;
+  @ApiProperty({ example: 1500.00 })
+  @IsNumber()
+  @IsPositive()
+  amount!: number;
 
-    @IsEnum(POCategory)
-    category!: POCategory;
+  @ApiProperty({ enum: POCategory, example: POCategory.OFFICE_SUPPLIES })
+  @IsEnum(POCategory)
+  category!: POCategory;
 }

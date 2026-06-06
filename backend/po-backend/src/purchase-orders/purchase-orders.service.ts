@@ -96,6 +96,8 @@ export class PurchaseOrdersService {
         switch (user.role) {
             case UserRole.REQUESTER:
                 return { createdBy: { id: user.id } };
+            case UserRole.MANAGER:
+                return { status: POStatus.PENDING_MANAGER };
             case UserRole.IT:
                 return { status: POStatus.PENDING_IT };
             case UserRole.FINANCE:
