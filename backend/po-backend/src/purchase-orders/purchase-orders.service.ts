@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException } from "@nestjs/commo
 import { InjectRepository } from "@nestjs/typeorm";
 import { POHistory, POAction } from "src/po-history/po-history.entity";
 import { User, UserRole } from "src/users/user.entity";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { CreatePoDto } from "./dto/create-po.dto";
 import { RejectPoDto } from "./dto/reject-po.dto";
 import { UpdatePoDto } from "./dto/uptdate-po.dto";
@@ -18,12 +18,22 @@ export class PurchaseOrdersService {
     ) { }
 
     async create(dto: CreatePoDto, user: User): Promise<PurchaseOrder> {
-        const initialStatus =
-            dto.amount < 100
-                ? this.getNextStatusAfterManager({
-                    category: dto.category,
-                } as PurchaseOrder)
-                : POStatus.PENDING_MANAGER;
+        if (dto.amount > 2000) {
+            const po = this.poRepository.create({
+                ...dto,
+                createdBy: user,
+                status: POStatus.PERMANENTLY_REJECTED,
+            });
+            const saved = await this.poRepository.save(po);
+            await this.saveHistory(saved, POAction.SUBMITTED, user, POStatus.PERMANENTLY_REJECTED, POStatus.PERMANENTLY_REJECTED);
+            await this.saveHistory(saved, POAction.HARD_REJECTED, user, POStatus.PERMANENTLY_REJECTED, POStatus.PERMANENTLY_REJECTED, 'too expensive, budget exceeded');
+            return saved;
+        }
+
+        const skipManager = user.role === UserRole.MANAGER || dto.amount < 100;
+        const initialStatus = skipManager
+            ? this.getNextStatusAfterManager({ category: dto.category } as PurchaseOrder)
+            : POStatus.PENDING_MANAGER;
 
         const po = this.poRepository.create({
             ...dto,
@@ -31,13 +41,7 @@ export class PurchaseOrdersService {
             status: initialStatus,
         });
         const saved = await this.poRepository.save(po);
-        await this.saveHistory(
-            saved,
-            POAction.SUBMITTED,
-            user,
-            initialStatus,
-            initialStatus,
-        );
+        await this.saveHistory(saved, POAction.SUBMITTED, user, initialStatus, initialStatus);
         return saved;
     }
 
@@ -49,8 +53,13 @@ export class PurchaseOrdersService {
     }
 
     async findOne(id: string, user: User): Promise<PurchaseOrder> {
+        const clause = this.getWhereClause(user);
+        const where = Array.isArray(clause)
+            ? clause.map((c) => ({ ...c, id }))
+            : { ...clause, id };
+
         const po = await this.poRepository.findOne({
-            where: { id, ...this.getWhereClause(user) },
+            where,
             relations: { createdBy: true },
         });
         if (!po) throw new NotFoundException('Purchase Order not found');
@@ -73,22 +82,23 @@ export class PurchaseOrdersService {
 
         const updatedAmount = dto.amount ?? po.amount;
         const updatedCategory = dto.category ?? po.category;
-        const newStatus =
-            updatedAmount < 100
-                ? this.getNextStatusAfterManager({
-                    category: updatedCategory,
-                } as PurchaseOrder)
-                : POStatus.PENDING_MANAGER;
+
+        if (updatedAmount > 2000) {
+            Object.assign(po, dto, { status: POStatus.PERMANENTLY_REJECTED });
+            const saved = await this.poRepository.save(po);
+            await this.saveHistory(saved, POAction.REWORKED, user, POStatus.NEEDS_REWORK, POStatus.PERMANENTLY_REJECTED);
+            await this.saveHistory(saved, POAction.HARD_REJECTED, user, POStatus.PERMANENTLY_REJECTED, POStatus.PERMANENTLY_REJECTED, 'too expensive, budget exceeded');
+            return saved;
+        }
+
+        const skipManager = user.role === UserRole.MANAGER || updatedAmount < 100;
+        const newStatus = skipManager
+            ? this.getNextStatusAfterManager({ category: updatedCategory } as PurchaseOrder)
+            : POStatus.PENDING_MANAGER;
 
         Object.assign(po, dto, { status: newStatus });
         const saved = await this.poRepository.save(po);
-        await this.saveHistory(
-            saved,
-            POAction.REWORKED,
-            user,
-            POStatus.NEEDS_REWORK,
-            newStatus,
-        );
+        await this.saveHistory(saved, POAction.REWORKED, user, POStatus.NEEDS_REWORK, newStatus);
         return saved;
     }
 
@@ -101,7 +111,10 @@ export class PurchaseOrdersService {
             case UserRole.IT:
                 return { status: POStatus.PENDING_IT };
             case UserRole.FINANCE:
-                return { status: POStatus.PENDING_FINANCE };
+                return [
+                    { status: In([POStatus.PENDING_FINANCE, POStatus.INVOICED, POStatus.PERMANENTLY_REJECTED]) },
+                    { createdBy: { id: user.id } },
+                ];
             default:
                 return {};
         }
@@ -138,6 +151,50 @@ export class PurchaseOrdersService {
             dto.comment,
         );
         return po;
+    }
+
+    async hardReject(id: string, dto: RejectPoDto, user: User): Promise<PurchaseOrder> {
+        if (user.role !== UserRole.FINANCE) throw new ForbiddenException();
+        const po = await this.findOne(id, user);
+        if (po.status !== POStatus.PENDING_FINANCE) {
+            throw new ForbiddenException('Hard reject is only allowed at the Finance stage');
+        }
+
+        const fromStatus = po.status;
+        po.status = POStatus.PERMANENTLY_REJECTED;
+        await this.poRepository.save(po);
+        await this.saveHistory(po, POAction.HARD_REJECTED, user, fromStatus, po.status, dto.comment);
+        return po;
+    }
+
+    async getMonthlySpendings(): Promise<{ requesterId: string; name: string; email: string; total: number }[]> {
+        const now = new Date();
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+        const activeStatuses = [
+            POStatus.PENDING_MANAGER,
+            POStatus.PENDING_IT,
+            POStatus.PENDING_FINANCE,
+            POStatus.INVOICED,
+        ];
+
+        const rows = await this.poRepository
+            .createQueryBuilder('po')
+            .leftJoin('po.createdBy', 'user')
+            .select('user.id', 'requesterId')
+            .addSelect('user.name', 'name')
+            .addSelect('user.email', 'email')
+            .addSelect('SUM(po.amount)', 'total')
+            .where('po.status IN (:...statuses)', { statuses: activeStatuses })
+            .andWhere('po.createdAt >= :start', { start })
+            .andWhere('po.createdAt < :end', { end })
+            .groupBy('user.id')
+            .addGroupBy('user.name')
+            .addGroupBy('user.email')
+            .getRawMany();
+
+        return rows.map((r) => ({ ...r, total: parseFloat(r.total) || 0 }));
     }
 
     async invoice(id: string, user: User): Promise<PurchaseOrder> {

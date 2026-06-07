@@ -65,6 +65,22 @@ export class PurchaseOrdersController {
     return this.poService.reject(id, dto, user);
   }
 
+  @Post('monthly-spending')
+  @ApiOperation({ summary: 'Get monthly spending per requester (Finance only)' })
+  @ApiResponse({ status: 200, description: 'List of requesters with their monthly total' })
+  getMonthlySpendings() {
+    return this.poService.getMonthlySpendings();
+  }
+
+  @Post(':id/hard-reject')
+  @ApiOperation({ summary: 'Permanently reject a PO (Finance only, exceeds monthly cap)' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiResponse({ status: 201, description: 'PO permanently rejected' })
+  @ApiResponse({ status: 403, description: 'Finance only or wrong status' })
+  hardReject(@Param('id') id: string, @Body() dto: RejectPoDto, @CurrentUser() user: User) {
+    return this.poService.hardReject(id, dto, user);
+  }
+
   @Post(':id/invoice')
   @ApiOperation({ summary: 'Mark PO as invoiced (Finance only)' })
   @ApiParam({ name: 'id', type: String })
