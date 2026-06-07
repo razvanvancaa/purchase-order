@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { getToken, clearAuth } from './auth';
 import {
+  ApprovalDecision,
   AuthResponse,
   CreatePOPayload,
+  MonthlySpending,
   POHistory,
   PurchaseOrder,
   RejectPOPayload,
@@ -67,6 +69,15 @@ export const poApi = {
 
   history: (id: string) =>
     api.get<POHistory[]>(`/purchase-orders/${id}/history`).then((r) => r.data),
+
+  hardReject: (id: string, data: RejectPOPayload) =>
+    api.post<PurchaseOrder>(`/purchase-orders/${id}/hard-reject`, data).then((r) => r.data),
+
+  monthlySpendings: () =>
+    api.post<MonthlySpending[]>('/purchase-orders/monthly-spending').then((r) => r.data),
+
+  myApprovals: () =>
+    api.get<ApprovalDecision[]>('/purchase-orders/my-approvals').then((r) => r.data),
 };
 
 // ─── Users ────────────────────────────────────────────────────────────────────

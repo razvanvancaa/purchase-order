@@ -12,6 +12,7 @@ export enum POStatus {
   PENDING_FINANCE = 'PENDING_FINANCE',
   NEEDS_REWORK = 'NEEDS_REWORK',
   INVOICED = 'INVOICED',
+  PERMANENTLY_REJECTED = 'PERMANENTLY_REJECTED',
 }
 
 export enum POCategory {
@@ -24,6 +25,7 @@ export enum POAction {
   SUBMITTED = 'SUBMITTED',
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
+  HARD_REJECTED = 'HARD_REJECTED',
   REWORKED = 'REWORKED',
   INVOICED = 'INVOICED',
 }
@@ -56,6 +58,11 @@ export interface POHistory {
   comment?: string;
   performedBy: User;
   timestamp: string;
+  purchaseOrder?: PurchaseOrder;
+}
+
+export interface ApprovalDecision extends POHistory {
+  purchaseOrder: PurchaseOrder;
 }
 
 export interface AuthResponse {
@@ -78,4 +85,11 @@ export interface UpdatePOPayload {
 
 export interface RejectPOPayload {
   comment: string;
+}
+
+export interface MonthlySpending {
+  requesterId: string;
+  name: string;
+  email: string;
+  total: number;
 }
