@@ -12,6 +12,7 @@ const links = [
   { href: '/purchase-orders', label: 'Purchase Orders', roles: null },
   { href: '/purchase-orders/new', label: 'New PO', roles: null },
   { href: '/approvals', label: 'Approvals', roles: approverRoles },
+  { href: '/admin/change-role', label: 'Change Role', roles: [UserRole.ADMIN] },
 ];
 
 export default function Sidebar() {
