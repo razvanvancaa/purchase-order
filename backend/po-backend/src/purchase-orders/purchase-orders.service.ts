@@ -159,6 +159,9 @@ export class PurchaseOrdersService {
         if (po.status !== POStatus.PENDING_FINANCE) {
             throw new ForbiddenException('Hard reject is only allowed at the Finance stage');
         }
+        if (po.createdBy.id === user.id) {
+            throw new ForbiddenException('You cannot reject your own purchase order');
+        }
 
         const fromStatus = po.status;
         po.status = POStatus.PERMANENTLY_REJECTED;
@@ -211,6 +214,17 @@ export class PurchaseOrdersService {
         return po;
     }
 
+    async getMyApprovals(user: User): Promise<POHistory[]> {
+        return this.historyRepository.find({
+            where: {
+                performedBy: { id: user.id },
+                action: In([POAction.APPROVED, POAction.REJECTED, POAction.HARD_REJECTED]),
+            },
+            relations: { performedBy: true, purchaseOrder: { createdBy: true } },
+            order: { timestamp: 'DESC' },
+        });
+    }
+
     async getHistory(id: string): Promise<POHistory[]> {
         return this.historyRepository.find({
             where: { purchaseOrder: { id } },
@@ -246,6 +260,10 @@ export class PurchaseOrdersService {
         };
         if (allowed[po.status] !== user.role) {
             throw new ForbiddenException('You are not allowed to approve this PO');
+        }
+        const selfApprovalBlocked = [POStatus.PENDING_IT, POStatus.PENDING_FINANCE];
+        if (selfApprovalBlocked.includes(po.status) && po.createdBy.id === user.id) {
+            throw new ForbiddenException('You cannot approve your own purchase order');
         }
     }
 

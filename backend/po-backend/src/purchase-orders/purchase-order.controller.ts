@@ -29,6 +29,13 @@ export class PurchaseOrdersController {
     return this.poService.findAll(user);
   }
 
+  @Get('my-approvals')
+  @ApiOperation({ summary: 'Get approval/rejection decisions made by the current user' })
+  @ApiResponse({ status: 200, description: 'List of history entries for decisions made by the current user' })
+  getMyApprovals(@CurrentUser() user: User) {
+    return this.poService.getMyApprovals(user);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a single Purchase Order' })
   @ApiParam({ name: 'id', type: String })
