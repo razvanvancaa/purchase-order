@@ -7,6 +7,8 @@ import { UsersModule } from './users/users.module';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
 import { POHistoryModule } from './po-history/po-history.module';
 import { AuthModule } from './auth/auth.module';
+import { BudgetsModule } from './budgets/budgets.module';
+import { DatabaseModule } from './database/database.module';
 
 @Module({
   imports: [
@@ -29,6 +31,8 @@ import { AuthModule } from './auth/auth.module';
     PurchaseOrdersModule,
     POHistoryModule,
     AuthModule,
+    BudgetsModule,
+    DatabaseModule,
   ],
   controllers: [AppController],
   providers: [AppService],

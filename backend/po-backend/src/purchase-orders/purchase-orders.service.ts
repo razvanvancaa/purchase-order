@@ -7,6 +7,7 @@ import { CreatePoDto } from "./dto/create-po.dto";
 import { RejectPoDto } from "./dto/reject-po.dto";
 import { UpdatePoDto } from "./dto/uptdate-po.dto";
 import { PurchaseOrder, POStatus, POCategory } from "./purchase-order.entity";
+import { BudgetsService } from "src/budgets/budgets.service";
 
 @Injectable()
 export class PurchaseOrdersService {
@@ -15,6 +16,7 @@ export class PurchaseOrdersService {
         private poRepository: Repository<PurchaseOrder>,
         @InjectRepository(POHistory)
         private historyRepository: Repository<POHistory>,
+        private budgetsService: BudgetsService,
     ) { }
 
     async create(dto: CreatePoDto, user: User): Promise<PurchaseOrder> {
@@ -27,6 +29,19 @@ export class PurchaseOrdersService {
             const saved = await this.poRepository.save(po);
             await this.saveHistory(saved, POAction.SUBMITTED, user, POStatus.PERMANENTLY_REJECTED, POStatus.PERMANENTLY_REJECTED);
             await this.saveHistory(saved, POAction.HARD_REJECTED, user, POStatus.PERMANENTLY_REJECTED, POStatus.PERMANENTLY_REJECTED, 'too expensive, budget exceeded');
+            return saved;
+        }
+
+        const budget = await this.budgetsService.getBudgetForUser(user.id);
+        if (budget && this.budgetsService.getRemainingBudget(budget) < dto.amount) {
+            const po = this.poRepository.create({
+                ...dto,
+                createdBy: user,
+                status: POStatus.PERMANENTLY_REJECTED,
+            });
+            const saved = await this.poRepository.save(po);
+            await this.saveHistory(saved, POAction.SUBMITTED, user, POStatus.PERMANENTLY_REJECTED, POStatus.PERMANENTLY_REJECTED);
+            await this.saveHistory(saved, POAction.HARD_REJECTED, user, POStatus.PERMANENTLY_REJECTED, POStatus.PERMANENTLY_REJECTED, 'annual budget exceeded');
             return saved;
         }
 
@@ -211,6 +226,7 @@ export class PurchaseOrdersService {
         po.status = POStatus.INVOICED;
         await this.poRepository.save(po);
         await this.saveHistory(po, POAction.INVOICED, user, fromStatus, po.status);
+        await this.budgetsService.addUsedAmount(po.createdBy.id, Number(po.amount));
         return po;
     }
 

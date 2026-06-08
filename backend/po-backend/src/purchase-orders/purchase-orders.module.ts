@@ -4,10 +4,11 @@ import { PurchaseOrder } from './purchase-order.entity';
 import { POHistory } from '../po-history/po-history.entity';
 import { PurchaseOrdersService } from './purchase-orders.service';
 import { PurchaseOrdersController } from './purchase-order.controller';
+import { BudgetsModule } from '../budgets/budgets.module';
 
 
 @Module({
-    imports: [TypeOrmModule.forFeature([PurchaseOrder, POHistory])],
+    imports: [TypeOrmModule.forFeature([PurchaseOrder, POHistory]), BudgetsModule],
     controllers: [PurchaseOrdersController],
     providers: [PurchaseOrdersService],
 })

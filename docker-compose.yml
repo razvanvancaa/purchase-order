@@ -1,8 +1,10 @@
 services:
   db:
-    image: postgres:16-alpine
+    build:
+      context: ./postgres
     container_name: po_postgres
     restart: unless-stopped
+    command: postgres -c shared_preload_libraries=pg_cron -c cron.database_name=po_db
     environment:
       POSTGRES_DB: po_db
       POSTGRES_USER: po_user
