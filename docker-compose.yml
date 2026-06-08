@@ -1,6 +1,6 @@
 services:
-  postgres:
-    image: postgres:16
+  db:
+    image: postgres:16-alpine
     container_name: po_postgres
     restart: unless-stopped
     environment:
@@ -8,9 +8,43 @@ services:
       POSTGRES_USER: po_user
       POSTGRES_PASSWORD: po_secret
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U po_user -d po_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend/po-backend
+    container_name: po_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: po_db
+      DB_USER: po_user
+      DB_PASSWORD: po_secret
+      JWT_SECRET: ${JWT_SECRET:-change_this_secret_in_production}
+      PORT: 3000
+    ports:
+      - '3000:3000'
+
+  frontend:
+    build:
+      context: ./frontend/po-frontend
+    container_name: po_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - '3001:3001'
 
 volumes:
   postgres_data:
