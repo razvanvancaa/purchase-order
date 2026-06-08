@@ -1,5 +1,5 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Body, Controller, Post, UnauthorizedException } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -18,10 +18,23 @@ export class AuthController {
   }
 
   @Post('login')
-  @ApiOperation({ summary: 'Login and receive JWT token' })
-  @ApiResponse({ status: 200, description: 'Returns access_token' })
+  @ApiOperation({ summary: 'Login and receive JWT access + refresh tokens' })
+  @ApiResponse({ status: 200, description: 'Returns access_token and refresh_token' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Post('refresh')
+  @ApiOperation({ summary: 'Exchange a refresh token for a new access token' })
+  @ApiBody({ schema: { properties: { refresh_token: { type: 'string' } } } })
+  @ApiResponse({ status: 200, description: 'Returns new access_token' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
+  async refresh(@Body('refresh_token') token: string) {
+    try {
+      return await this.authService.refresh(token);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
   }
 }

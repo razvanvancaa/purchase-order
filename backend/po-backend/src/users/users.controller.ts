@@ -1,19 +1,36 @@
 import { UseGuards, Controller, Get, Patch, Param, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiResponse } from '@nestjs/swagger';
+import { CurrentUser } from 'src/auth/current-user.decorator';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { Roles } from 'src/auth/roles.decorator';
 import { RolesGuard } from 'src/auth/roles.guards';
 import { UpdateRoleDto } from './dto/uptdate-role.dto';
-import { UserRole } from './user.entity';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { User, UserRole } from './user.entity';
 import { UsersService } from './users-service';
 
 @ApiTags('Users')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Get('me')
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({ status: 200, description: 'Current user' })
+  getMe(@CurrentUser() user: User) {
+    return this.usersService.findById(user.id);
+  }
+
+  @Patch('me')
+  @ApiOperation({ summary: 'Update name or password' })
+  @ApiResponse({ status: 200, description: 'Profile updated' })
+  updateMe(@CurrentUser() user: User, @Body() dto: UpdateProfileDto) {
+    return this.usersService.updateProfile(user.id, dto);
+  }
+
+  @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   @Get()
   @ApiOperation({ summary: 'List all users (Admin only)' })
@@ -23,6 +40,7 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
+  @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   @Patch(':id/role')
   @ApiOperation({ summary: 'Update user role (Admin only)' })

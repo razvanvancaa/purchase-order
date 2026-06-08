@@ -42,11 +42,23 @@ export class AuthService {
         const valid = await bcrypt.compare(dto.password, user.password);
         if (!valid) throw new UnauthorizedException('Invalid credentials');
 
-        const token = this.jwtService.sign({
-            sub: user.id,
-            email: user.email,
-            role: user.role,
-        });
-        return { access_token: token };
+        const payload = { sub: user.id, email: user.email, role: user.role };
+        const access_token = this.jwtService.sign(payload);
+        const refresh_token = this.jwtService.sign(payload, { expiresIn: '7d' });
+        return { access_token, refresh_token };
+    }
+
+    async refresh(token: string): Promise<{ access_token: string }> {
+        try {
+            const payload = this.jwtService.verify<{ sub: string; email: string; role: string }>(token);
+            const access_token = this.jwtService.sign({
+                sub: payload.sub,
+                email: payload.email,
+                role: payload.role,
+            });
+            return { access_token };
+        } catch {
+            throw new Error('Invalid refresh token');
+        }
     }
 }
