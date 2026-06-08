@@ -97,6 +97,9 @@ export const poApi = {
 
   myApprovals: () =>
     api.get<ApprovalDecision[]>('/purchase-orders/my-approvals').then((r) => r.data),
+
+  allForReport: () =>
+    api.get<PurchaseOrder[]>('/purchase-orders/all-for-report').then((r) => r.data),
 };
 
 // ─── Users ────────────────────────────────────────────────────────────────────
@@ -113,6 +116,9 @@ export const usersApi = {
 
   updateMe: (data: { name?: string; password?: string }) =>
     api.patch<User>('/users/me', data).then((r) => r.data),
+
+  adminContact: () =>
+    api.get<{ name: string; email: string } | null>('/users/admin-contact').then((r) => r.data),
 };
 
 // ─── Budgets ──────────────────────────────────────────────────────────────────

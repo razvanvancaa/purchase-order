@@ -7,6 +7,7 @@ import { User } from '../users/user.entity';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
+import { BudgetsModule } from 'src/budgets/budgets.module';
 
 @Module({
     imports: [
@@ -20,6 +21,7 @@ import { JwtStrategy } from './jwt.strategy';
                 signOptions: { expiresIn: '1d' },
             }),
         }),
+        BudgetsModule,
     ],
     controllers: [AuthController],
     providers: [AuthService, JwtStrategy],

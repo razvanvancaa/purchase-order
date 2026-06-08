@@ -8,17 +8,18 @@ import { POCategory, POStatus, PurchaseOrder, UserRole } from '@/types';
 import POStatusBadge from '@/components/purchase-orders/POStatusBadge';
 
 function exportToCsv(rows: PurchaseOrder[]) {
-  const headers = ['Title', 'Category', 'Amount (€)', 'Status', 'Created By', 'Date'];
+  const sep = ';';
+  const headers = ['Title', 'Category', 'Amount (EUR)', 'Status', 'Created By', 'Date'];
   const lines = rows.map((po) => [
     `"${po.title.replace(/"/g, '""')}"`,
     po.category,
     Number(po.amount).toFixed(2),
     po.status,
-    po.createdBy?.name ?? '',
+    `"${(po.createdBy?.name ?? '').replace(/"/g, '""')}"`,
     new Date(po.createdAt).toLocaleDateString('en-GB'),
-  ].join(','));
-  const csv = [headers.join(','), ...lines].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
+  ].join(sep));
+  const csv = [headers.join(sep), ...lines].join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

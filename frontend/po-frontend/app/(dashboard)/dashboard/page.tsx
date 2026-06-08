@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { poApi } from '@/lib/api';
+import { budgetsApi, poApi } from '@/lib/api';
 import { getUser } from '@/lib/auth';
-import { MonthlySpending, PurchaseOrder, POStatus, UserRole } from '@/types';
+import { Budget, PurchaseOrder, POStatus, UserRole } from '@/types';
 
-const MONTHLY_CAP = 2000;
 
 function StatCard({ label, value, sub }: { label: string; value: number | string; sub?: string }) {
   return (
@@ -32,7 +31,8 @@ export default function DashboardPage() {
   const role = user?.role;
 
   const [pos, setPos] = useState<PurchaseOrder[]>([]);
-  const [spendings, setSpendings] = useState<MonthlySpending[]>([]);
+  const [allPos, setAllPos] = useState<PurchaseOrder[]>([]);
+  const [allBudgets, setAllBudgets] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -42,7 +42,8 @@ export default function DashboardPage() {
     ];
     if (role === UserRole.FINANCE) {
       promises.push(
-        poApi.monthlySpendings().then(setSpendings).catch(() => {}),
+        budgetsApi.getAll().then(setAllBudgets).catch(() => {}),
+        poApi.allForReport().then(setAllPos).catch(() => {}),
       );
     }
     Promise.all(promises).finally(() => setLoading(false));
@@ -143,41 +144,116 @@ export default function DashboardPage() {
               sub="orders at Finance stage"
             />
             <StatCard
-              label="Requesters this month"
-              value={spendings.length}
+              label="Employees tracked"
+              value={allBudgets.length}
+              sub="with annual budget"
             />
             <StatCard
-              label="Exceeded cap"
-              value={spendings.filter((s) => s.total > MONTHLY_CAP).length}
-              sub={`Cap: €${MONTHLY_CAP.toLocaleString()}`}
+              label="Exceeded budget"
+              value={allBudgets.filter((b) => {
+                const spent = allPos
+                  .filter((p) => p.createdBy?.id === b.user?.id && p.status === POStatus.INVOICED)
+                  .reduce((s, p) => s + Number(p.amount), 0);
+                return spent > Number(b.annual_limit);
+              }).length}
+              sub="users over their limit"
             />
           </div>
 
-          {spendings.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-gray-700">Monthly spending per requester</h2>
-                <span className="text-xs text-gray-400">Cap: €{MONTHLY_CAP.toLocaleString()}</span>
+          {/* Team budget overview */}
+          {allBudgets.length > 0 && (() => {
+            const teamTotal = allBudgets.reduce((s, b) => s + Number(b.annual_limit), 0);
+            const teamInvoiced = allPos
+              .filter((p) => p.status === POStatus.INVOICED)
+              .reduce((s, p) => s + Number(p.amount), 0);
+            const teamPipeline = allPos
+              .filter((p) => p.status === POStatus.PENDING_FINANCE || p.status === POStatus.PENDING_IT || p.status === POStatus.PENDING_MANAGER)
+              .reduce((s, p) => s + Number(p.amount), 0);
+            const teamCommitted = teamInvoiced + teamPipeline;
+            const overTeam = teamCommitted > teamTotal;
+            const invoicedPct = teamTotal > 0 ? Math.min((teamInvoiced / teamTotal) * 100, 100) : 0;
+            const pipelinePct = teamTotal > 0 ? Math.min((teamPipeline / teamTotal) * 100, 100 - invoicedPct) : 0;
+            const remaining = Math.max(teamTotal - teamCommitted, 0);
+            return (
+              <div className="space-y-3">
+                <h2 className="text-sm font-semibold text-gray-700">Team budget ({new Date().getFullYear()})</h2>
+                <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 text-center">
+                    <div>
+                      <p className="text-xs text-gray-500">Total allocated</p>
+                      <p className="text-lg font-semibold text-gray-900">
+                        €{teamTotal.toLocaleString('en-GB', { minimumFractionDigits: 0 })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Invoiced</p>
+                      <p className="text-lg font-semibold text-blue-600">
+                        €{teamInvoiced.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">In pipeline</p>
+                      <p className="text-lg font-semibold text-amber-500">
+                        €{teamPipeline.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Remaining</p>
+                      <p className={`text-lg font-semibold ${overTeam ? 'text-red-600' : 'text-green-600'}`}>
+                        €{remaining.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden flex">
+                    <div className="h-full bg-blue-500 transition-all" style={{ width: `${invoicedPct}%` }} />
+                    <div className="h-full bg-amber-400 transition-all" style={{ width: `${pipelinePct}%` }} />
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-400">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />Invoiced</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />In pipeline</span>
+                    </div>
+                    <span>{overTeam ? 'Over budget' : `${(((teamCommitted) / teamTotal) * 100).toFixed(1)}% committed`}</span>
+                  </div>
+                </div>
               </div>
-              {spendings.map((s) => {
-                const pct = Math.min((s.total / MONTHLY_CAP) * 100, 100);
-                const overCap = s.total > MONTHLY_CAP;
+            );
+          })()}
+
+          {allBudgets.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-gray-700">Budget per employee</h2>
+              {allBudgets.map((b) => {
+                const limit = Number(b.annual_limit);
+                const invoiced = allPos
+                  .filter((p) => p.createdBy?.id === b.user?.id && p.status === POStatus.INVOICED)
+                  .reduce((s, p) => s + Number(p.amount), 0);
+                const pipeline = allPos
+                  .filter((p) => p.createdBy?.id === b.user?.id &&
+                    (p.status === POStatus.PENDING_FINANCE || p.status === POStatus.PENDING_IT || p.status === POStatus.PENDING_MANAGER))
+                  .reduce((s, p) => s + Number(p.amount), 0);
+                const committed = invoiced + pipeline;
+                const overLimit = committed > limit;
+                const invoicedPct = limit > 0 ? Math.min((invoiced / limit) * 100, 100) : 0;
+                const pipelinePct = limit > 0 ? Math.min((pipeline / limit) * 100, 100 - invoicedPct) : 0;
                 return (
-                  <div key={s.requesterId} className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
+                  <div key={b.id} className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-gray-900">{s.name || s.email}</span>
-                      <span className={`font-semibold ${overCap ? 'text-red-600' : 'text-gray-700'}`}>
-                        €{s.total.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
-                        {overCap && <span className="ml-1 text-xs font-normal">— exceeded</span>}
+                      <span className="font-medium text-gray-900">{b.user?.name || b.user?.email}</span>
+                      <span className={`font-semibold ${overLimit ? 'text-red-600' : 'text-gray-700'}`}>
+                        €{committed.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                        <span className="font-normal text-gray-400"> / €{limit.toLocaleString('en-GB', { minimumFractionDigits: 0 })}</span>
+                        {overLimit && <span className="ml-1 text-xs font-normal text-red-500">— exceeded</span>}
                       </span>
                     </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full transition-all ${overCap ? 'bg-red-500' : pct >= 80 ? 'bg-yellow-400' : 'bg-blue-500'}`}
-                        style={{ width: `${pct}%` }}
-                      />
+                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden flex">
+                      <div className="h-full bg-blue-500 transition-all" style={{ width: `${invoicedPct}%` }} />
+                      <div className="h-full bg-amber-400 transition-all" style={{ width: `${pipelinePct}%` }} />
                     </div>
-                    <p className="text-xs text-gray-400">{pct.toFixed(1)}% of monthly cap</p>
+                    <div className="flex justify-between text-xs text-gray-400">
+                      <span>Invoiced: €{invoiced.toLocaleString('en-GB', { minimumFractionDigits: 2 })} · Pipeline: €{pipeline.toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
+                      <span>{((committed / limit) * 100).toFixed(1)}% used</span>
+                    </div>
                   </div>
                 );
               })}

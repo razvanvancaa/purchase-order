@@ -22,18 +22,6 @@ export class PurchaseOrdersService {
     ) { }
 
     async create(dto: CreatePoDto, user: User): Promise<PurchaseOrder> {
-        if (dto.amount > 2000) {
-            const po = this.poRepository.create({
-                ...dto,
-                createdBy: user,
-                status: POStatus.PERMANENTLY_REJECTED,
-            });
-            const saved = await this.poRepository.save(po);
-            await this.saveHistory(saved, POAction.SUBMITTED, user, POStatus.PERMANENTLY_REJECTED, POStatus.PERMANENTLY_REJECTED);
-            await this.saveHistory(saved, POAction.HARD_REJECTED, user, POStatus.PERMANENTLY_REJECTED, POStatus.PERMANENTLY_REJECTED, 'too expensive, budget exceeded');
-            return saved;
-        }
-
         const budget = await this.budgetsService.getBudgetForUser(user.id);
         if (budget && this.budgetsService.getRemainingBudget(budget) < dto.amount) {
             const po = this.poRepository.create({
@@ -60,6 +48,10 @@ export class PurchaseOrdersService {
         const saved = await this.poRepository.save(po);
         await this.saveHistory(saved, POAction.SUBMITTED, user, initialStatus, initialStatus);
         return saved;
+    }
+
+    async findAllForReport(): Promise<PurchaseOrder[]> {
+        return this.poRepository.find({ relations: { createdBy: true } });
     }
 
     async findAll(user: User, status?: string, category?: string): Promise<PurchaseOrder[]> {
@@ -124,11 +116,12 @@ export class PurchaseOrdersService {
         const updatedAmount = dto.amount ?? po.amount;
         const updatedCategory = dto.category ?? po.category;
 
-        if (updatedAmount > 2000) {
+        const budget = await this.budgetsService.getBudgetForUser(user.id);
+        if (budget && this.budgetsService.getRemainingBudget(budget) < updatedAmount) {
             Object.assign(po, dto, { status: POStatus.PERMANENTLY_REJECTED });
             const saved = await this.poRepository.save(po);
             await this.saveHistory(saved, POAction.REWORKED, user, POStatus.NEEDS_REWORK, POStatus.PERMANENTLY_REJECTED);
-            await this.saveHistory(saved, POAction.HARD_REJECTED, user, POStatus.PERMANENTLY_REJECTED, POStatus.PERMANENTLY_REJECTED, 'too expensive, budget exceeded');
+            await this.saveHistory(saved, POAction.HARD_REJECTED, user, POStatus.PERMANENTLY_REJECTED, POStatus.PERMANENTLY_REJECTED, 'annual budget exceeded');
             return saved;
         }
 
@@ -168,8 +161,15 @@ export class PurchaseOrdersService {
         const fromStatus = po.status;
         po.status = this.getNextStatus(po);
         await this.poRepository.save(po);
-        await this.saveHistory(po, POAction.APPROVED, user, fromStatus, po.status);
-        this.notificationsService.notifyOnApprove(po).catch(() => null);
+
+        if (po.status === POStatus.INVOICED) {
+            await this.saveHistory(po, POAction.INVOICED, user, fromStatus, po.status);
+            await this.budgetsService.addUsedAmount(po.createdBy.id, Number(po.amount));
+            this.notificationsService.notifyRequesterStatusChange(po).catch(() => null);
+        } else {
+            await this.saveHistory(po, POAction.APPROVED, user, fromStatus, po.status);
+            this.notificationsService.notifyOnApprove(po).catch(() => null);
+        }
         return po;
     }
 

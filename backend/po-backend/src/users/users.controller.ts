@@ -30,6 +30,13 @@ export class UsersController {
     return this.usersService.updateProfile(user.id, dto);
   }
 
+  @Get('admin-contact')
+  @ApiOperation({ summary: 'Get admin contact info (name + email)' })
+  @ApiResponse({ status: 200, description: 'Admin contact details' })
+  getAdminContact() {
+    return this.usersService.getAdminContact();
+  }
+
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   @Get()

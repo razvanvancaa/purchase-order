@@ -2,7 +2,9 @@ import { UseGuards, Controller, Post, Body, Get, Param, Patch, Query } from '@ne
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { CurrentUser } from 'src/auth/current-user.decorator';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
-import { User } from 'src/users/user.entity';
+import { Roles } from 'src/auth/roles.decorator';
+import { RolesGuard } from 'src/auth/roles.guards';
+import { User, UserRole } from 'src/users/user.entity';
 import { CreatePoDto } from './dto/create-po.dto';
 import { RejectPoDto } from './dto/reject-po.dto';
 import { UpdatePoDto } from './dto/uptdate-po.dto';
@@ -47,6 +49,15 @@ export class PurchaseOrdersController {
   @ApiResponse({ status: 200, description: 'List of history entries for decisions made by the current user' })
   getMyApprovals(@CurrentUser() user: User) {
     return this.poService.getMyApprovals(user);
+  }
+
+  @Get('all-for-report')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.FINANCE, UserRole.ADMIN)
+  @ApiOperation({ summary: 'All POs across all users for budget reporting (Finance/Admin only)' })
+  @ApiResponse({ status: 200, description: 'Full list of POs regardless of status' })
+  findAllForReport() {
+    return this.poService.findAllForReport();
   }
 
   @Get(':id')

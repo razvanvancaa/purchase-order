@@ -4,7 +4,7 @@ import { Repository } from "typeorm";
 import * as bcrypt from 'bcryptjs';
 import { UpdateRoleDto } from "./dto/uptdate-role.dto";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
-import { User } from "./user.entity";
+import { User, UserRole } from "./user.entity";
 
 @Injectable()
 export class UsersService {
@@ -34,5 +34,11 @@ export class UsersService {
         if (dto.name) user.name = dto.name;
         if (dto.password) user.password = await bcrypt.hash(dto.password, 10);
         return this.usersRepository.save(user);
+    }
+
+    async getAdminContact(): Promise<{ name: string; email: string } | null> {
+        const admin = await this.usersRepository.findOne({ where: { role: UserRole.ADMIN } });
+        if (!admin) return null;
+        return { name: admin.name, email: admin.email };
     }
 }

@@ -70,4 +70,19 @@ export class BudgetsService {
     return Number(budget.annual_limit) - Number(budget.used_amount);
   }
 
+  async createDefaultBudget(userId: string): Promise<void> {
+    const year = new Date().getFullYear();
+    const existing = await this.budgetRepository.findOne({
+      where: { user: { id: userId }, year },
+    });
+    if (existing) return;
+    const budget = this.budgetRepository.create({
+      user: { id: userId } as any,
+      year,
+      annual_limit: 2000,
+      used_amount: 0,
+    });
+    await this.budgetRepository.save(budget);
+  }
+
 }

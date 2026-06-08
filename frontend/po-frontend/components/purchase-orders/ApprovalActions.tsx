@@ -85,7 +85,7 @@ export default function ApprovalActions({ po, userRole, userId, onAction }: Appr
             disabled={loading}
             className="bg-green-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
           >
-            {loading ? 'Processing...' : 'Approve'}
+            {loading ? 'Processing...' : isFinance ? 'Approve & Invoice' : 'Approve'}
           </button>
           <button
             onClick={() => setRejectMode('soft')}
