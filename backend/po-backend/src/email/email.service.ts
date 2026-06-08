@@ -63,6 +63,16 @@ export class EmailService {
     `;
   }
 
+  budgetRejectedHtml(userName: string, comment: string): string {
+    return `
+      <p>Hi <strong>${userName}</strong>,</p>
+      <p>Your budget supplement request has been <strong style="color:#dc2626">rejected</strong>.</p>
+      <p><strong>Reason:</strong></p>
+      <p style="background:#fef2f2;border-left:3px solid #ef4444;padding:8px 12px;margin:4px 0">${comment}</p>
+      <p style="color:#6b7280;font-size:12px;margin-top:16px">This is an automated notification from the PO system.</p>
+    `;
+  }
+
   budgetRequestHtml(requesterName: string, requesterEmail: string, description: string, currentLimit: number | null): string {
     return `
       <p>A budget supplement request has been submitted:</p>

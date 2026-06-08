@@ -182,13 +182,19 @@ export default function ProfilePage() {
               placeholder="Leave blank to keep current"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-950 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          {password && (
-            <div>
-              <label className="block text-sm font-medium text-gray-950 mb-1">Confirm password</label>
-              <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-950 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-950 mb-1">Confirm new password</label>
+            <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)}
+              placeholder="Repeat new password"
+              className={`w-full border rounded-lg px-3 py-2 text-sm text-gray-950 placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-colors ${
+                confirm && password && confirm !== password
+                  ? 'border-red-400 focus:ring-red-400'
+                  : 'border-gray-300 focus:ring-blue-500'
+              }`} />
+            {confirm && password && confirm !== password && (
+              <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+            )}
+          </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           {success && <p className="text-sm text-green-700">{success}</p>}
           <button type="submit" disabled={loading}

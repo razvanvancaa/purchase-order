@@ -173,9 +173,6 @@ export default function BudgetRequestsPage() {
         </section>
       )}
 
-      {approveId && (
-        <div className="fixed inset-0" onClick={() => { setApproveId(null); setNewLimit(''); }} />
-      )}
     </div>
   );
 }

@@ -4,8 +4,15 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getUser, clearAuth } from '@/lib/auth';
-import { notificationsApi, budgetRequestsApi } from '@/lib/api';
+import { notificationsApi, budgetRequestsApi, poApi } from '@/lib/api';
 import { BudgetRequest, Notification, UserRole } from '@/types';
+
+const PENDING_STATUS: Partial<Record<UserRole, string>> = {
+  [UserRole.MANAGER]: 'PENDING_MANAGER',
+  [UserRole.IT]: 'PENDING_IT',
+  [UserRole.FINANCE]: 'PENDING_FINANCE',
+  [UserRole.REQUESTER]: 'NEEDS_REWORK',
+};
 
 const roleLabel: Record<UserRole, string> = {
   [UserRole.REQUESTER]: 'Requester',
@@ -30,12 +37,14 @@ export default function Navbar() {
   const user = getUser();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [budgetReqs, setBudgetReqs] = useState<BudgetRequest[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [dark, setDark] = useState(false);
   const [lastRead, setLastRead] = useState('1970-01-01');
   const ref = useRef<HTMLDivElement>(null);
 
   const isManager = user?.role === UserRole.MANAGER || user?.role === UserRole.ADMIN;
+  const isAdmin = user?.role === UserRole.ADMIN;
 
   useEffect(() => {
     const stored = localStorage.getItem(DARK_KEY) === 'true';
@@ -54,16 +63,36 @@ export default function Navbar() {
   useEffect(() => {
     const load = () => {
       notificationsApi.recent().then(setNotifications).catch(() => null);
+
       if (isManager) {
         budgetRequestsApi.all()
           .then((reqs) => setBudgetReqs(reqs.filter((r) => r.status === 'PENDING')))
           .catch(() => null);
       }
+
+      const role = user?.role;
+      if (role) {
+        if (isAdmin) {
+          // Admin sees all actionable statuses
+          Promise.all([
+            poApi.list('PENDING_MANAGER'),
+            poApi.list('PENDING_IT'),
+            poApi.list('PENDING_FINANCE'),
+          ])
+            .then(([m, it, f]) => setPendingCount(m.length + it.length + f.length))
+            .catch(() => null);
+        } else {
+          const status = PENDING_STATUS[role];
+          if (status) {
+            poApi.list(status).then((pos) => setPendingCount(pos.length)).catch(() => null);
+          }
+        }
+      }
     };
     load();
     const id = setInterval(load, 30000);
     return () => clearInterval(id);
-  }, [isManager]);
+  }, [isManager, isAdmin, user?.role]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -73,9 +102,7 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const unreadPO = notifications.filter((n) => n.timestamp > lastRead).length;
-  const unreadBudget = budgetReqs.filter((r) => r.createdAt > lastRead).length;
-  const totalUnread = unreadPO + unreadBudget;
+  const totalUnread = pendingCount + budgetReqs.length;
 
   const handleOpen = () => {
     const next = !open;

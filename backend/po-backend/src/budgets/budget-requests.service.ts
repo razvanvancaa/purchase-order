@@ -52,7 +52,10 @@ export class BudgetRequestsService {
   }
 
   async approve(id: string, reviewer: User, newLimit: number): Promise<BudgetRequest> {
-    const req = await this.requestRepository.findOne({ where: { id } });
+    const req = await this.requestRepository.findOne({
+      where: { id },
+      relations: { requester: true },
+    });
     if (!req) throw new NotFoundException('Request not found.');
     if (req.status !== 'PENDING') throw new ForbiddenException('Request already reviewed.');
 
@@ -65,19 +68,28 @@ export class BudgetRequestsService {
 
     this.notificationsService
       .notifyBudgetUpdate(req.requester.email, req.requester.name, newLimit, new Date().getFullYear())
-      .catch(() => null);
+      .catch((err) => this.logger.error(`Failed to notify budget approval: ${err.message}`));
 
     return saved;
   }
 
   async reject(id: string, reviewer: User, comment: string): Promise<BudgetRequest> {
-    const req = await this.requestRepository.findOne({ where: { id } });
+    const req = await this.requestRepository.findOne({
+      where: { id },
+      relations: { requester: true },
+    });
     if (!req) throw new NotFoundException('Request not found.');
     if (req.status !== 'PENDING') throw new ForbiddenException('Request already reviewed.');
 
     req.status = 'REJECTED';
     req.comment = comment;
     req.reviewedBy = reviewer;
-    return this.requestRepository.save(req);
+    const saved = await this.requestRepository.save(req);
+
+    this.notificationsService
+      .notifyBudgetRequestRejected(req.requester.email, req.requester.name, comment)
+      .catch((err) => this.logger.error(`Failed to notify budget rejection: ${err.message}`));
+
+    return saved;
   }
 }

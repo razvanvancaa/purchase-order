@@ -55,6 +55,14 @@ export class NotificationsService {
     );
   }
 
+  async notifyBudgetRequestRejected(userEmail: string, userName: string, comment: string): Promise<void> {
+    await this.emailService.send(
+      userEmail,
+      'Your budget supplement request was rejected',
+      this.emailService.budgetRejectedHtml(userName, comment),
+    );
+  }
+
   async notifyManagersBudgetRequest(requesterName: string, requesterEmail: string, description: string, currentLimit: number | null): Promise<void> {
     const managers = await this.userRepository.find({ where: { role: UserRole.MANAGER } });
     if (!managers.length) {

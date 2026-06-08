@@ -35,6 +35,12 @@ services:
       DB_PASSWORD: po_secret
       JWT_SECRET: ${JWT_SECRET:-change_this_secret_in_production}
       PORT: 3000
+      MAIL_HOST: sandbox.smtp.mailtrap.io
+      MAIL_PORT: 2525
+      MAIL_USER: 51c07f2ff3def0
+      MAIL_PASS: d53eec9ba7f302
+      MAIL_FROM: noreply@poapp.dev
+      FRONTEND_URL: http://localhost:3001
     ports:
       - '3000:3000'
 
