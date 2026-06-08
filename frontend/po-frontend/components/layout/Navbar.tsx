@@ -78,15 +78,15 @@ export default function Navbar() {
   };
 
   return (
-    <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0">
-      <span className="font-semibold text-gray-800">Purchase Orders</span>
+    <header className="h-14 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between px-6 shrink-0">
+      <span className="font-semibold text-gray-800 dark:text-slate-100">Purchase Orders</span>
 
       <div className="flex items-center gap-4">
         {/* Bell icon */}
         <div ref={ref} className="relative">
           <button
             onClick={handleOpen}
-            className="relative p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+            className="relative p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
             aria-label="Notifications"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -129,13 +129,13 @@ export default function Navbar() {
 
         {user && (
           <div className="text-right">
-            <p className="text-sm font-medium text-gray-800">{user.name || user.email}</p>
-            <p className="text-xs text-gray-500">{roleLabel[user.role]}</p>
+            <p className="text-sm font-medium text-gray-800 dark:text-slate-100">{user.name || user.email}</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400">{roleLabel[user.role]}</p>
           </div>
         )}
         <button
           onClick={toggleDark}
-          className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-600"
+          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors text-gray-600 dark:text-slate-400"
           aria-label="Toggle dark mode"
           title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
         >
@@ -152,7 +152,7 @@ export default function Navbar() {
 
         <button
           onClick={handleLogout}
-          className="text-sm text-gray-500 hover:text-red-600 transition-colors"
+          className="text-sm text-gray-500 dark:text-slate-400 hover:text-red-600 transition-colors"
         >
           Logout
         </button>

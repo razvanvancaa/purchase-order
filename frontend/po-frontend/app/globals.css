@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -17,15 +19,36 @@
   --foreground: #f1f5f9;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not(.light) {
-    --background: #0f172a;
-    --foreground: #f1f5f9;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* dark mode overrides for common Tailwind utility patterns */
+.dark .bg-white { background-color: #1e293b; }
+.dark .bg-gray-50 { background-color: #0f172a; }
+.dark .bg-gray-100 { background-color: #1e293b; }
+.dark .border-gray-200 { border-color: #334155; }
+.dark .border-gray-100 { border-color: #1e293b; }
+.dark .text-gray-900,
+.dark .text-gray-950 { color: #f1f5f9; }
+.dark .text-gray-800 { color: #e2e8f0; }
+.dark .text-gray-700 { color: #cbd5e1; }
+.dark .text-gray-600 { color: #94a3b8; }
+.dark .text-gray-500 { color: #64748b; }
+.dark .text-gray-400 { color: #475569; }
+.dark .divide-gray-100 > * { border-color: #1e293b; }
+.dark .hover\:bg-gray-50:hover { background-color: #1e293b; }
+.dark .hover\:bg-gray-100:hover { background-color: #334155; }
+.dark select,
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"],
+.dark input[type="number"],
+.dark textarea {
+  background-color: #1e293b;
+  color: #f1f5f9;
+  border-color: #334155;
+}
+.dark select option { background-color: #1e293b; }
