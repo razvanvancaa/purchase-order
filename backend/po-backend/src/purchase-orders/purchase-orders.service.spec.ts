@@ -1,9 +1,5 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { BudgetsService } from 'src/budgets/budgets.service';
-import { NotificationsService } from 'src/email/notifications.service';
-import { POHistory, POAction } from 'src/po-history/po-history.entity';
+import { POAction } from 'src/po-history/po-history.entity';
 import { UserRole, User } from 'src/users/user.entity';
 import { PurchaseOrder, POCategory, POStatus } from './purchase-order.entity';
 import { PurchaseOrdersService } from './purchase-orders.service';
@@ -54,24 +50,19 @@ describe('PurchaseOrdersService', () => {
     notifyRequesterStatusChange: jest.fn().mockResolvedValue(undefined),
   };
 
-  beforeEach(async () => {
+  beforeEach(() => {
     jest.clearAllMocks();
     mockHistoryRepo.create.mockReturnValue({});
     mockHistoryRepo.save.mockResolvedValue({});
     mockBudgetsService.getBudgetForUser.mockResolvedValue(null);
     mockBudgetsService.getRemainingBudget.mockReturnValue(99999);
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        PurchaseOrdersService,
-        { provide: getRepositoryToken(PurchaseOrder), useValue: mockPoRepo },
-        { provide: getRepositoryToken(POHistory), useValue: mockHistoryRepo },
-        { provide: BudgetsService, useValue: mockBudgetsService },
-        { provide: NotificationsService, useValue: mockNotificationsService },
-      ],
-    }).compile();
-
-    service = module.get<PurchaseOrdersService>(PurchaseOrdersService);
+    service = new PurchaseOrdersService(
+      mockPoRepo as any,
+      mockHistoryRepo as any,
+      mockBudgetsService as any,
+      mockNotificationsService as any,
+    );
   });
 
   // ─── create ────────────────────────────────────────────────────────────────
