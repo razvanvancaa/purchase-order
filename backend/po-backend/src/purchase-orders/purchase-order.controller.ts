@@ -1,5 +1,5 @@
-import { UseGuards, Controller, Post, Body, Get, Param, Patch } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { UseGuards, Controller, Post, Body, Get, Param, Patch, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { CurrentUser } from 'src/auth/current-user.decorator';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { User } from 'src/users/user.entity';
@@ -24,9 +24,22 @@ export class PurchaseOrdersController {
 
   @Get()
   @ApiOperation({ summary: 'List POs (filtered by role)' })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'category', required: false })
   @ApiResponse({ status: 200, description: 'List of POs visible to the current user' })
-  findAll(@CurrentUser() user: User) {
-    return this.poService.findAll(user);
+  findAll(
+    @CurrentUser() user: User,
+    @Query('status') status?: string,
+    @Query('category') category?: string,
+  ) {
+    return this.poService.findAll(user, status, category);
+  }
+
+  @Get('notifications')
+  @ApiOperation({ summary: 'Recent status changes on my POs (last 14 days)' })
+  @ApiResponse({ status: 200, description: 'List of recent history entries for my POs' })
+  getNotifications(@CurrentUser() user: User) {
+    return this.poService.getNotifications(user);
   }
 
   @Get('my-approvals')
