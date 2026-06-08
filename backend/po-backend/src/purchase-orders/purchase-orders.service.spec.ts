@@ -68,14 +68,16 @@ describe('PurchaseOrdersService', () => {
   // ─── create ────────────────────────────────────────────────────────────────
 
   describe('create', () => {
-    it('auto-rejects PO over €2000 with hard_rejected history', async () => {
+    it('auto-rejects PO when amount exceeds remaining user budget', async () => {
       const user = makeUser(UserRole.REQUESTER);
       const po = makePO({ status: POStatus.PERMANENTLY_REJECTED });
       mockPoRepo.create.mockReturnValue(po);
       mockPoRepo.save.mockResolvedValue(po);
+      mockBudgetsService.getBudgetForUser.mockResolvedValue({ annual_limit: 1000, used_amount: 800 });
+      mockBudgetsService.getRemainingBudget.mockReturnValue(200);
 
       const result = await service.create(
-        { title: 'Expensive', amount: 2001, category: POCategory.OFFICE_SUPPLIES } as any,
+        { title: 'Over budget', amount: 500, category: POCategory.OFFICE_SUPPLIES } as any,
         user,
       );
 
@@ -83,7 +85,7 @@ describe('PurchaseOrdersService', () => {
       expect(mockHistoryRepo.save).toHaveBeenCalledTimes(2);
       const secondHistoryCreate = mockHistoryRepo.create.mock.calls[1][0];
       expect(secondHistoryCreate.action).toBe(POAction.HARD_REJECTED);
-      expect(secondHistoryCreate.comment).toBe('too expensive, budget exceeded');
+      expect(secondHistoryCreate.comment).toBe('annual budget exceeded');
     });
 
     it('skips manager stage when creator is a Manager', async () => {
