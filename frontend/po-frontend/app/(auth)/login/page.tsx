@@ -18,8 +18,9 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { access_token } = await authApi.login(form);
+      const { access_token, refresh_token } = await authApi.login(form);
       saveToken(access_token);
+      localStorage.setItem('refresh_token', refresh_token);
 
       const payload = JSON.parse(atob(access_token.split('.')[1]));
       saveUser({ id: payload.sub, email: payload.email, role: payload.role, name: '', createdAt: '' });

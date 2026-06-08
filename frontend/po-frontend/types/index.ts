@@ -67,6 +67,7 @@ export interface ApprovalDecision extends POHistory {
 
 export interface AuthResponse {
   access_token: string;
+  refresh_token: string;
 }
 
 export interface CreatePOPayload {
@@ -92,4 +93,22 @@ export interface MonthlySpending {
   name: string;
   email: string;
   total: number;
+}
+
+export interface Budget {
+  id: string;
+  user: User;
+  year: number;
+  annual_limit: number;
+  used_amount: number;
+  updatedAt: string;
+}
+
+export interface Notification {
+  id: string;
+  action: POAction;
+  toStatus: POStatus;
+  comment?: string;
+  timestamp: string;
+  purchaseOrder: PurchaseOrder;
 }

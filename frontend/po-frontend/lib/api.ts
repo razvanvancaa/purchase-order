@@ -3,8 +3,10 @@ import { getToken, clearAuth } from './auth';
 import {
   ApprovalDecision,
   AuthResponse,
+  Budget,
   CreatePOPayload,
   MonthlySpending,
+  Notification,
   POHistory,
   PurchaseOrder,
   RejectPOPayload,
@@ -22,11 +24,27 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+const REFRESH_KEY = 'refresh_token';
+
 api.interceptors.response.use(
   (res) => res,
-  (error) => {
-    if (error.response?.status === 401) {
+  async (error) => {
+    const original = error.config;
+    if (error.response?.status === 401 && !original._retry) {
+      original._retry = true;
+      const refresh = localStorage.getItem(REFRESH_KEY);
+      if (refresh) {
+        try {
+          const { data } = await axios.post(`${api.defaults.baseURL}/auth/refresh`, { refresh_token: refresh });
+          localStorage.setItem('access_token', data.access_token);
+          original.headers.Authorization = `Bearer ${data.access_token}`;
+          return api(original);
+        } catch {
+          // refresh failed — fall through to logout
+        }
+      }
       clearAuth();
+      localStorage.removeItem(REFRESH_KEY);
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -46,8 +64,8 @@ export const authApi = {
 // ─── Purchase Orders ──────────────────────────────────────────────────────────
 
 export const poApi = {
-  list: () =>
-    api.get<PurchaseOrder[]>('/purchase-orders').then((r) => r.data),
+  list: (status?: string, category?: string) =>
+    api.get<PurchaseOrder[]>('/purchase-orders', { params: { status, category } }).then((r) => r.data),
 
   get: (id: string) =>
     api.get<PurchaseOrder>(`/purchase-orders/${id}`).then((r) => r.data),
@@ -88,4 +106,30 @@ export const usersApi = {
 
   updateRole: (id: string, role: string) =>
     api.patch<User>(`/users/${id}/role`, { role }).then((r) => r.data),
+
+  me: () =>
+    api.get<User>('/users/me').then((r) => r.data),
+
+  updateMe: (data: { name?: string; password?: string }) =>
+    api.patch<User>('/users/me', data).then((r) => r.data),
+};
+
+// ─── Budgets ──────────────────────────────────────────────────────────────────
+
+export const budgetsApi = {
+  getAll: (year?: number) =>
+    api.get<Budget[]>('/budgets', { params: year ? { year } : {} }).then((r) => r.data),
+
+  getMe: () =>
+    api.get<Budget | null>('/budgets/me').then((r) => r.data),
+
+  set: (userId: string, annual_limit: number, year?: number) =>
+    api.post<Budget>('/budgets', { userId, annual_limit, year }).then((r) => r.data),
+};
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export const notificationsApi = {
+  recent: () =>
+    api.get<Notification[]>('/purchase-orders/notifications').then((r) => r.data),
 };
