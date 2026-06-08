@@ -12,6 +12,7 @@ const links = [
   { href: '/purchase-orders', label: 'Purchase Orders', roles: null },
   { href: '/purchase-orders/new', label: 'New PO', roles: null },
   { href: '/approvals', label: 'Approvals', roles: approverRoles },
+  { href: '/budget-requests', label: 'Budget Requests', roles: [UserRole.MANAGER, UserRole.ADMIN] },
   { href: '/admin/change-role', label: 'Change Role', roles: [UserRole.ADMIN] },
   { href: '/admin/budgets', label: 'Manage Budgets', roles: [UserRole.ADMIN] },
   { href: '/profile', label: 'Profile', roles: null },

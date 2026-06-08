@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole } from 'src/users/user.entity';
@@ -7,6 +7,8 @@ import { EmailService } from './email.service';
 
 @Injectable()
 export class NotificationsService {
+  private readonly logger = new Logger(NotificationsService.name);
+
   constructor(
     private emailService: EmailService,
     @InjectRepository(User)
@@ -55,8 +57,12 @@ export class NotificationsService {
 
   async notifyManagersBudgetRequest(requesterName: string, requesterEmail: string, description: string, currentLimit: number | null): Promise<void> {
     const managers = await this.userRepository.find({ where: { role: UserRole.MANAGER } });
-    if (!managers.length) return;
+    if (!managers.length) {
+      this.logger.warn('notifyManagersBudgetRequest: no MANAGER users found in DB — email not sent');
+      return;
+    }
     const emails = managers.map((m) => m.email);
+    this.logger.log(`Sending budget request email to managers: ${emails.join(', ')}`);
     await this.emailService.send(
       emails,
       `Budget supplement request from ${requesterName}`,

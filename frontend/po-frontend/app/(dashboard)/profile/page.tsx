@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { usersApi, budgetsApi } from '@/lib/api';
-import { Budget, User } from '@/types';
+import { usersApi, budgetsApi, budgetRequestsApi } from '@/lib/api';
+import { Budget, BudgetRequest, User } from '@/types';
 import { saveUser } from '@/lib/auth';
 
 function daysUntilReset(updatedAt: string): number {
@@ -28,14 +28,17 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
+  const [myRequests, setMyRequests] = useState<BudgetRequest[]>([]);
   const [showSupplementModal, setShowSupplementModal] = useState(false);
   const [supplementDesc, setSupplementDesc] = useState('');
+  const [supplementLimit, setSupplementLimit] = useState('');
   const [supplementLoading, setSupplementLoading] = useState(false);
   const [supplementSuccess, setSupplementSuccess] = useState(false);
 
   useEffect(() => {
     usersApi.me().then((u) => { setProfile(u); setName(u.name); });
     budgetsApi.getMe().then(setBudget).catch(() => null);
+    budgetRequestsApi.mine().then(setMyRequests).catch(() => null);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -61,13 +64,20 @@ export default function ProfilePage() {
     }
   };
 
+  const hasPending = myRequests.some((r) => r.status === 'PENDING');
+
   const handleSupplementRequest = async () => {
     if (!supplementDesc.trim()) return;
     setSupplementLoading(true);
     try {
-      await budgetsApi.requestSupplement(supplementDesc.trim());
+      const created = await budgetRequestsApi.create(
+        supplementDesc.trim(),
+        supplementLimit ? parseFloat(supplementLimit) : undefined,
+      );
+      setMyRequests((prev) => [created, ...prev]);
       setSupplementSuccess(true);
       setSupplementDesc('');
+      setSupplementLimit('');
       setTimeout(() => { setShowSupplementModal(false); setSupplementSuccess(false); }, 2000);
     } catch {
       // silent
@@ -127,10 +137,30 @@ export default function ProfilePage() {
 
         <button
           onClick={() => setShowSupplementModal(true)}
-          className="w-full mt-2 border border-blue-300 text-blue-700 rounded-lg py-2 text-sm font-medium hover:bg-blue-50 transition-colors"
+          disabled={hasPending}
+          className="w-full mt-2 border border-blue-300 text-blue-700 rounded-lg py-2 text-sm font-medium hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          Request Budget Supplement
+          {hasPending ? 'Request Pending...' : 'Request Budget Supplement'}
         </button>
+
+        {myRequests.length > 0 && (
+          <div className="pt-3 border-t border-gray-100 space-y-2">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Your requests</p>
+            {myRequests.slice(0, 3).map((req) => (
+              <div key={req.id} className="flex items-start justify-between gap-2">
+                <p className="text-xs text-gray-600 flex-1 truncate">{req.description}</p>
+                <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
+                  req.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                  req.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                  'bg-red-100 text-red-700'
+                }`}>
+                  {req.status === 'APPROVED' ? `Approved — €${Number(req.approvedLimit).toLocaleString('en-GB')}` :
+                   req.status === 'REJECTED' ? 'Rejected' : 'Pending'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Profile form */}
@@ -183,9 +213,19 @@ export default function ProfilePage() {
                   value={supplementDesc}
                   onChange={(e) => setSupplementDesc(e.target.value)}
                   placeholder="Explain why you need additional budget..."
-                  rows={4}
+                  rows={3}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-950 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 />
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Requested limit (€) — optional</label>
+                  <input
+                    type="number" min="0" step="100"
+                    value={supplementLimit}
+                    onChange={(e) => setSupplementLimit(e.target.value)}
+                    placeholder="e.g. 5000"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-950 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
                 <div className="flex gap-3 justify-end">
                   <button onClick={() => { setShowSupplementModal(false); setSupplementDesc(''); }}
                     className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">

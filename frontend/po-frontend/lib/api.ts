@@ -4,6 +4,7 @@ import {
   ApprovalDecision,
   AuthResponse,
   Budget,
+  BudgetRequest,
   CreatePOPayload,
   MonthlySpending,
   Notification,
@@ -126,8 +127,25 @@ export const budgetsApi = {
   set: (userId: string, annual_limit: number, year?: number) =>
     api.post<Budget>('/budgets', { userId, annual_limit, year }).then((r) => r.data),
 
-  requestSupplement: (description: string) =>
-    api.post('/budgets/request-supplement', { description }),
+};
+
+// ─── Budget Requests ─────────────────────────────────────────────────────────
+
+export const budgetRequestsApi = {
+  create: (description: string, requestedLimit?: number) =>
+    api.post<BudgetRequest>('/budget-requests', { description, requestedLimit }).then((r) => r.data),
+
+  mine: () =>
+    api.get<BudgetRequest[]>('/budget-requests/mine').then((r) => r.data),
+
+  all: () =>
+    api.get<BudgetRequest[]>('/budget-requests').then((r) => r.data),
+
+  approve: (id: string, newLimit: number) =>
+    api.patch<BudgetRequest>(`/budget-requests/${id}/approve`, { newLimit }).then((r) => r.data),
+
+  reject: (id: string, comment: string) =>
+    api.patch<BudgetRequest>(`/budget-requests/${id}/reject`, { comment }).then((r) => r.data),
 };
 
 // ─── Notifications ────────────────────────────────────────────────────────────

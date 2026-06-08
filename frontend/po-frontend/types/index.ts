@@ -104,6 +104,19 @@ export interface Budget {
   updatedAt: string;
 }
 
+export interface BudgetRequest {
+  id: string;
+  requester: User;
+  description: string;
+  requestedLimit: number | null;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  comment: string | null;
+  approvedLimit: number | null;
+  reviewedBy: User | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Notification {
   id: string;
   action: POAction;

@@ -70,15 +70,4 @@ export class BudgetsService {
     return Number(budget.annual_limit) - Number(budget.used_amount);
   }
 
-  async requestSupplement(userId: string, description: string): Promise<void> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) return;
-    const budget = await this.getBudgetForUser(userId);
-    await this.notificationsService.notifyManagersBudgetRequest(
-      user.name,
-      user.email,
-      description,
-      budget ? Number(budget.annual_limit) : null,
-    );
-  }
 }
