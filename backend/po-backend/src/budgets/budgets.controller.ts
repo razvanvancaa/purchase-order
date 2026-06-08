@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards, HttpCode } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from 'src/auth/current-user.decorator';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
@@ -35,5 +35,15 @@ export class BudgetsController {
   @ApiOperation({ summary: 'Set annual budget for a user (Admin only)' })
   setBudget(@Body() dto: SetBudgetDto) {
     return this.budgetsService.setBudget(dto);
+  }
+
+  @Post('request-supplement')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Request budget supplement from manager' })
+  requestSupplement(
+    @CurrentUser() user: User,
+    @Body('description') description: string,
+  ) {
+    return this.budgetsService.requestSupplement(user.id, description);
   }
 }

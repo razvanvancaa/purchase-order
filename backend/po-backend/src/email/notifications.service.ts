@@ -44,4 +44,23 @@ export class NotificationsService {
   async notifyOnReject(po: PurchaseOrder, comment: string): Promise<void> {
     await this.notifyRequesterStatusChange(po, comment);
   }
+
+  async notifyBudgetUpdate(userEmail: string, userName: string, limit: number, year: number): Promise<void> {
+    await this.emailService.send(
+      userEmail,
+      `Your annual budget for ${year} has been updated`,
+      this.emailService.budgetUpdateHtml(userName, limit, year),
+    );
+  }
+
+  async notifyManagersBudgetRequest(requesterName: string, requesterEmail: string, description: string, currentLimit: number | null): Promise<void> {
+    const managers = await this.userRepository.find({ where: { role: UserRole.MANAGER } });
+    if (!managers.length) return;
+    const emails = managers.map((m) => m.email);
+    await this.emailService.send(
+      emails,
+      `Budget supplement request from ${requesterName}`,
+      this.emailService.budgetRequestHtml(requesterName, requesterEmail, description, currentLimit),
+    );
+  }
 }

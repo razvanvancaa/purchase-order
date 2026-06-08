@@ -7,6 +7,6 @@ import { NotificationsService } from './notifications.service';
 @Module({
   imports: [TypeOrmModule.forFeature([User])],
   providers: [EmailService, NotificationsService],
-  exports: [NotificationsService],
+  exports: [EmailService, NotificationsService],
 })
 export class EmailModule {}

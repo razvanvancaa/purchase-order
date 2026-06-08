@@ -54,6 +54,29 @@ export class EmailService {
     `;
   }
 
+  budgetUpdateHtml(userName: string, limit: number, year: number): string {
+    return `
+      <p>Hi <strong>${userName}</strong>,</p>
+      <p>Your annual spending budget for <strong>${year}</strong> has been updated:</p>
+      <p style="font-size:22px;font-weight:bold;color:#1d4ed8">€${Number(limit).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</p>
+      <p style="color:#6b7280;font-size:12px;margin-top:16px">This is an automated notification from the PO system.</p>
+    `;
+  }
+
+  budgetRequestHtml(requesterName: string, requesterEmail: string, description: string, currentLimit: number | null): string {
+    return `
+      <p>A budget supplement request has been submitted:</p>
+      <table style="border-collapse:collapse;margin-top:8px">
+        <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Employee</td><td><strong>${requesterName}</strong></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Email</td><td>${requesterEmail}</td></tr>
+        ${currentLimit !== null ? `<tr><td style="padding:4px 12px 4px 0;color:#6b7280">Current limit</td><td><strong>€${Number(currentLimit).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</strong></td></tr>` : ''}
+      </table>
+      <p style="margin-top:12px"><strong>Reason:</strong></p>
+      <p style="background:#f9fafb;border-left:3px solid #3b82f6;padding:8px 12px;margin:4px 0">${description}</p>
+      <p style="color:#6b7280;font-size:12px;margin-top:16px">Log in to the PO system to update their budget.</p>
+    `;
+  }
+
   financeReviewHtml(poTitle: string, amount: number, requesterName: string): string {
     return `
       <p>A purchase order requires Finance review:</p>

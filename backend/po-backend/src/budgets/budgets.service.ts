@@ -1,14 +1,19 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Budget } from './budget.entity';
 import { SetBudgetDto } from './dto/set-budget.dto';
+import { NotificationsService } from 'src/email/notifications.service';
+import { User } from 'src/users/user.entity';
 
 @Injectable()
 export class BudgetsService {
   constructor(
     @InjectRepository(Budget)
     private budgetRepository: Repository<Budget>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
+    private notificationsService: NotificationsService,
   ) {}
 
   async setBudget(dto: SetBudgetDto): Promise<Budget> {
@@ -28,7 +33,16 @@ export class BudgetsService {
       });
     }
 
-    return this.budgetRepository.save(budget);
+    const saved = await this.budgetRepository.save(budget);
+
+    const user = await this.userRepository.findOne({ where: { id: dto.userId } });
+    if (user) {
+      this.notificationsService
+        .notifyBudgetUpdate(user.email, user.name, dto.annual_limit, year)
+        .catch(() => null);
+    }
+
+    return saved;
   }
 
   async getBudgetForUser(userId: string, year?: number): Promise<Budget | null> {
@@ -54,5 +68,17 @@ export class BudgetsService {
 
   getRemainingBudget(budget: Budget): number {
     return Number(budget.annual_limit) - Number(budget.used_amount);
+  }
+
+  async requestSupplement(userId: string, description: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) return;
+    const budget = await this.getBudgetForUser(userId);
+    await this.notificationsService.notifyManagersBudgetRequest(
+      user.name,
+      user.email,
+      description,
+      budget ? Number(budget.annual_limit) : null,
+    );
   }
 }

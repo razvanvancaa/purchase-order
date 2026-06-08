@@ -125,6 +125,9 @@ export const budgetsApi = {
 
   set: (userId: string, annual_limit: number, year?: number) =>
     api.post<Budget>('/budgets', { userId, annual_limit, year }).then((r) => r.data),
+
+  requestSupplement: (description: string) =>
+    api.post('/budgets/request-supplement', { description }),
 };
 
 // ─── Notifications ────────────────────────────────────────────────────────────
