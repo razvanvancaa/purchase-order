@@ -8,6 +8,7 @@ import { RejectPoDto } from "./dto/reject-po.dto";
 import { UpdatePoDto } from "./dto/uptdate-po.dto";
 import { PurchaseOrder, POStatus, POCategory } from "./purchase-order.entity";
 import { BudgetsService } from "src/budgets/budgets.service";
+import { NotificationsService } from "src/email/notifications.service";
 
 @Injectable()
 export class PurchaseOrdersService {
@@ -17,6 +18,7 @@ export class PurchaseOrdersService {
         @InjectRepository(POHistory)
         private historyRepository: Repository<POHistory>,
         private budgetsService: BudgetsService,
+        private notificationsService: NotificationsService,
     ) { }
 
     async create(dto: CreatePoDto, user: User): Promise<PurchaseOrder> {
@@ -60,11 +62,35 @@ export class PurchaseOrdersService {
         return saved;
     }
 
-    async findAll(user: User): Promise<PurchaseOrder[]> {
-        return this.poRepository.find({
-            where: this.getWhereClause(user),
-            relations: { createdBy: true },
-        });
+    async findAll(user: User, status?: string, category?: string): Promise<PurchaseOrder[]> {
+        const base = this.getWhereClause(user);
+        const extra: Partial<PurchaseOrder> = {};
+        if (status) extra.status = status as POStatus;
+        if (category) extra.category = category as POCategory;
+
+        const where = Array.isArray(base)
+            ? base.map((c) => ({ ...c, ...extra }))
+            : { ...base, ...extra };
+
+        return this.poRepository.find({ where, relations: { createdBy: true } });
+    }
+
+    async getNotifications(user: User): Promise<POHistory[]> {
+        const since = new Date();
+        since.setDate(since.getDate() - 14);
+        return this.historyRepository
+            .createQueryBuilder('h')
+            .innerJoin('h.purchaseOrder', 'po')
+            .innerJoin('po.createdBy', 'creator')
+            .leftJoinAndSelect('h.purchaseOrder', 'po2')
+            .leftJoinAndSelect('po2.createdBy', 'creator2')
+            .where('creator.id = :userId', { userId: user.id })
+            .andWhere('h.action IN (:...actions)', {
+                actions: [POAction.APPROVED, POAction.REJECTED, POAction.HARD_REJECTED, POAction.INVOICED],
+            })
+            .andWhere('h.timestamp >= :since', { since })
+            .orderBy('h.timestamp', 'DESC')
+            .getMany();
     }
 
     async findOne(id: string, user: User): Promise<PurchaseOrder> {
@@ -143,6 +169,7 @@ export class PurchaseOrdersService {
         po.status = this.getNextStatus(po);
         await this.poRepository.save(po);
         await this.saveHistory(po, POAction.APPROVED, user, fromStatus, po.status);
+        this.notificationsService.notifyOnApprove(po).catch(() => null);
         return po;
     }
 
@@ -165,6 +192,7 @@ export class PurchaseOrdersService {
             po.status,
             dto.comment,
         );
+        this.notificationsService.notifyOnReject(po, dto.comment).catch(() => null);
         return po;
     }
 
@@ -182,6 +210,7 @@ export class PurchaseOrdersService {
         po.status = POStatus.PERMANENTLY_REJECTED;
         await this.poRepository.save(po);
         await this.saveHistory(po, POAction.HARD_REJECTED, user, fromStatus, po.status, dto.comment);
+        this.notificationsService.notifyOnReject(po, dto.comment).catch(() => null);
         return po;
     }
 
@@ -227,6 +256,7 @@ export class PurchaseOrdersService {
         await this.poRepository.save(po);
         await this.saveHistory(po, POAction.INVOICED, user, fromStatus, po.status);
         await this.budgetsService.addUsedAmount(po.createdBy.id, Number(po.amount));
+        this.notificationsService.notifyRequesterStatusChange(po).catch(() => null);
         return po;
     }
 

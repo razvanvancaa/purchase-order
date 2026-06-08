@@ -9,6 +9,7 @@ import { POHistoryModule } from './po-history/po-history.module';
 import { AuthModule } from './auth/auth.module';
 import { BudgetsModule } from './budgets/budgets.module';
 import { DatabaseModule } from './database/database.module';
+import { EmailModule } from './email/email.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { DatabaseModule } from './database/database.module';
     AuthModule,
     BudgetsModule,
     DatabaseModule,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [AppService],
